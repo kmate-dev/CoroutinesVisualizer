@@ -6,6 +6,7 @@ import com.kmate.dev.coroutinesvisualizer.domain.CoroutineStatus
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.util.UUID
 
 class CoroutinesDemoScreenViewModel : ViewModel() {
@@ -29,7 +30,6 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
     }
 
     private fun addCoroutineInternal(scope: CoroutineScope, parentId: String?) {
-
         val name =
             if (parentId == null) "Coroutine ${_rootCoroutines.value.size + 1}"
             else "Child ${UUID.randomUUID().toString().take(4)}"
@@ -66,8 +66,10 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
         jobMap[id]?.cancel()
     }
 
-    fun cancelAll() {
+    fun clearAll() {
         parentJob.cancelChildren()
+        _rootCoroutines.update { emptyList() }
+        jobMap.clear()
     }
 
     private fun updateStatus(id: String, status: CoroutineStatus) {

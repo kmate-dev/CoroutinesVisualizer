@@ -31,8 +31,8 @@ fun CoroutinesDemoScreen(
 
             Spacer(Modifier.width(8.dp))
 
-            Button(onClick = viewModel::cancelAll) {
-                Text("Cancel All")
+            Button(onClick = viewModel::clearAll) {
+                Text("Clear All")
             }
         }
 
