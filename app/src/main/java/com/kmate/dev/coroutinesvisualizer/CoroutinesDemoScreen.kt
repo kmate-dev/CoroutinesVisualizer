@@ -6,68 +6,95 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kmate.dev.coroutinesvisualizer.domain.CoroutineNode
+import com.kmate.dev.coroutinesvisualizer.domain.CoroutineStatus
 
 @Composable
 fun CoroutinesDemoScreen(
     modifier: Modifier,
     viewModel: CoroutinesDemoScreenViewModel = viewModel()
 ) {
-    val coroutines by viewModel.coroutines.collectAsState()
+    val roots by viewModel.rootCoroutines.collectAsState()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-
-        Text("Coroutines Demo", style = MaterialTheme.typography.headlineSmall)
-
-        Spacer(Modifier.height(12.dp))
-
+    Column(modifier) {
         Row {
-            Button(onClick = { viewModel.addCoroutine() }) {
-                Text("Add Coroutine")
+            Button(onClick = viewModel::addRootCoroutine) {
+                Text("Add Root Coroutine")
             }
 
             Spacer(Modifier.width(8.dp))
 
-            Button(onClick = { viewModel.cancelAll() }) {
+            Button(onClick = viewModel::cancelAll) {
                 Text("Cancel All")
-            }
-
-            Spacer(Modifier.width(8.dp))
-
-            OutlinedButton(onClick = { viewModel.restartAll() }) {
-                Text("Clear")
             }
         }
 
         Spacer(Modifier.height(16.dp))
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(coroutines) { coroutine ->
-                Card {
-                    Row(
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(coroutine.name, style = MaterialTheme.typography.titleMedium)
-                            Text(coroutine.status, style = MaterialTheme.typography.bodyMedium)
-                        }
-
-                        Button(onClick = { viewModel.cancelCoroutine(coroutine.id) }) {
-                            Text("Cancel")
-                        }
-                    }
-                }
+        LazyColumn {
+            items(roots) { node ->
+                CoroutineNodeView(
+                    node = node,
+                    level = 0,
+                    onAddChild = { viewModel.addChildCoroutine(it) },
+                    onCancel = { viewModel.cancelNode(it) }
+                )
             }
         }
     }
 }
+
+@Composable
+fun CoroutineNodeView(
+    node: CoroutineNode,
+    level: Int,
+    onAddChild: (id: String) -> Unit,
+    onCancel: (id: String) -> Unit
+) {
+    Column(
+        Modifier
+            .padding(start = (level * 16).dp, bottom = 8.dp)
+    ) {
+        Card {
+            Row(
+                Modifier
+                    .padding(12.dp)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+
+                Column {
+                    Text(node.name)
+                    Text(
+                        text = node.status.name,
+                        color = when (node.status) {
+                            CoroutineStatus.Running -> Color.Green
+                            CoroutineStatus.Completed -> Color.Blue
+                            CoroutineStatus.Cancelled -> Color.Red
+                            CoroutineStatus.Failed -> Color.Magenta
+                        }
+                    )
+                }
+
+                Row {
+                    Button(onClick = { onAddChild(node.id) }) { Text("+ Child") }
+                    Spacer(Modifier.width(8.dp))
+                    Button(onClick = { onCancel(node.id) }) { Text("Cancel") }
+                }
+            }
+        }
+
+        node.children.forEach { child ->
+            CoroutineNodeView(
+                node = child,
+                level = level + 1,
+                onAddChild = { onAddChild(child.id) },
+                onCancel = { onCancel(child.id) }
+            )
+        }
+    }
+}
+

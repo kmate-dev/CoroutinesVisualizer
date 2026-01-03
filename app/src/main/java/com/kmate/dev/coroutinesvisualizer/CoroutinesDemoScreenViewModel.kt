@@ -1,71 +1,93 @@
 package com.kmate.dev.coroutinesvisualizer
 
 import androidx.lifecycle.ViewModel
+import com.kmate.dev.coroutinesvisualizer.domain.CoroutineNode
+import com.kmate.dev.coroutinesvisualizer.domain.CoroutineStatus
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.util.UUID
 
-data class Coroutine(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val status: String = "Running"
-)
-
 class CoroutinesDemoScreenViewModel : ViewModel() {
 
-    private val _coroutines = MutableStateFlow<List<Coroutine>>(emptyList())
-    val coroutines = _coroutines.asStateFlow()
+    private val _rootCoroutines = MutableStateFlow<List<CoroutineNode>>(emptyList())
+    val rootCoroutines = _rootCoroutines.asStateFlow()
 
-    private val parentCoroutine = SupervisorJob()
-    private val parentScope = CoroutineScope(parentCoroutine + Dispatchers.Default)
+    private val parentJob = SupervisorJob()
+    private val parentScope = CoroutineScope(parentJob + Dispatchers.Default)
 
-    private val coroutinesMap = mutableMapOf<String, Job>()
+    private val jobMap = mutableMapOf<String, Job>()
 
-    fun addCoroutine() {
-        val jobName = "Job ${_coroutines.value.size + 1}"
-        val coroutine = Coroutine(name = jobName)
+    fun addRootCoroutine() {
+        addCoroutineInternal(parentScope, null)
+    }
 
-        _coroutines.value += coroutine
+    fun addChildCoroutine(parentId: String) {
+        val parentJob = jobMap[parentId] ?: return
+        val childScope = CoroutineScope(parentJob)
+        addCoroutineInternal(childScope, parentId)
+    }
 
-        val job = parentScope.launch {
-            try {
-                repeat(10) { i ->
-                    delay(1000)
-                    updateStatus(coroutine.id, "Running step ${i + 1}")
-                }
-                updateStatus(coroutine.id, "Completed")
-            } catch (e: CancellationException) {
-                updateStatus(coroutine.id, "Cancelled")
-                throw e
+    private fun addCoroutineInternal(scope: CoroutineScope, parentId: String?) {
+
+        val name =
+            if (parentId == null) "Coroutine ${_rootCoroutines.value.size + 1}"
+            else "Child ${UUID.randomUUID().toString().take(4)}"
+
+        val node = CoroutineNode(name = name)
+
+        _rootCoroutines.value =
+            if (parentId == null)
+                _rootCoroutines.value + node
+            else
+                _rootCoroutines.value.updateNode(parentId) { it.copy(children = it.children + node) }
+
+        val job = scope.launch {
+
+            repeat(10) { i ->
+                delay(1000)
             }
         }
 
-        coroutinesMap[coroutine.id] = job
+        job.invokeOnCompletion { error ->
+            val status = when {
+                error == null -> CoroutineStatus.Completed
+                error is CancellationException -> CoroutineStatus.Cancelled
+                else -> CoroutineStatus.Failed
+            }
+
+            updateStatus(node.id, status)
+        }
+
+        jobMap[node.id] = job
     }
 
-    fun cancelCoroutine(id: String) {
-        coroutinesMap[id]?.cancel()
+    fun cancelNode(id: String) {
+        jobMap[id]?.cancel()
     }
 
     fun cancelAll() {
-        parentCoroutine.cancelChildren()
+        parentJob.cancelChildren()
     }
 
-    fun restartAll() {
-        // optional helper to reset
-        coroutinesMap.clear()
-        _coroutines.value = emptyList()
-    }
-
-    private fun updateStatus(id: String, status: String) {
-        _coroutines.value = _coroutines.value.map {
-            if (it.id == id) it.copy(status = status) else it
+    private fun updateStatus(id: String, status: CoroutineStatus) {
+        _rootCoroutines.value = _rootCoroutines.value.updateNode(id) {
+            it.copy(status = status)
         }
     }
 
     override fun onCleared() {
-        super.onCleared()
-        parentCoroutine.cancel()
+        parentJob.cancel()
     }
 }
+
+private fun List<CoroutineNode>.updateNode(
+    id: String,
+    transform: (CoroutineNode) -> CoroutineNode
+): List<CoroutineNode> =
+    map {
+        if (it.id == id) transform(it)
+        else it.copy(children = it.children.updateNode(id, transform))
+    }
+
+
