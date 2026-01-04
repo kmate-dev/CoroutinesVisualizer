@@ -48,29 +48,7 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
     private val nodeEvents = MutableSharedFlow<CoroutineNodeEvent>()
 
     fun addRootCoroutine() {
-        val newId = "Coroutine ${_rootCoroutines.value.size + 1}"
-
-        val newJob = mainScope.launch {
-            observeEvents(newId, this)
-        }
-
-        newJob.invokeOnCompletion { error ->
-            val status = when (error) {
-                null -> CoroutineStatus.Completed
-                is CancellationException -> CoroutineStatus.Cancelled
-                else -> CoroutineStatus.Failed
-            }
-            updateStatus(newId, status)
-        }
-
-        val newNode = CoroutineNode(
-            id = newId,
-            job = newJob,
-            status = newJob.toStatus()
-        )
-
-        _rootCoroutines.value += newNode
-
+        _rootCoroutines.value += createNewNode(null, mainScope)
     }
 
     fun addChildCoroutine(parentNode: CoroutineNode) {
@@ -107,7 +85,7 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
         mainJob.cancel()
     }
 
-    private suspend fun observeEvents(observerNodeId: String, observerScope: CoroutineScope) {
+    private suspend fun observeEvents(observerNodeId: String, scope: CoroutineScope) {
         nodeEvents.collect { event ->
             if(event.nodeId == observerNodeId) {
                 when (event) {
@@ -118,7 +96,7 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
                     is CoroutineNodeEvent.AddChildNode -> {
                         val parentNode = rootCoroutines.value.findNodeById(observerNodeId) ?: return@collect
 
-                        val newNode = createNewNode(parentNode, observerScope)
+                        val newNode = createNewNode(parentNode, scope)
 
                         _rootCoroutines.update {
                             _rootCoroutines.value.updateNode(parentNode.id) {
@@ -137,10 +115,12 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
         }
     }
 
-    private fun createNewNode(parentNode: CoroutineNode, observerScope: CoroutineScope): CoroutineNode {
-        val newId = "${parentNode.id}.${parentNode.children.size + 1}"
+    private fun createNewNode(parentNode: CoroutineNode?, parentScope: CoroutineScope): CoroutineNode {
+        val newId =
+            if (parentNode == null) "Coroutine ${_rootCoroutines.value.size + 1}"
+            else "${parentNode.id}.${parentNode.children.size + 1}"
 
-        val newJob = observerScope.launch {
+        val newJob = parentScope.launch {
             observeEvents(newId, this)
         }
 
