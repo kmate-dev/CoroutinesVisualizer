@@ -16,8 +16,8 @@ import com.kmate.dev.coroutinesvisualizer.domain.CoroutineNode
 @Composable
 fun CoroutineTree(
     roots: List<CoroutineNode>,
-    onAddChild: (String) -> Unit,
-    onCancel: (String) -> Unit,
+    onAddChild: (CoroutineNode) -> Unit,
+    onCancel: (CoroutineNode) -> Unit,
 ) {
     val positioned = remember(roots) { layoutTree(roots) }
 
@@ -53,8 +53,8 @@ fun CoroutineTree(
                 ) {
                     CoroutineNodeCard(
                         node = pos.node,
-                        onAddChild = { onAddChild(pos.node.id) },
-                        onCancel = { onCancel(pos.node.id) }
+                        onAddChild = { onAddChild(pos.node) },
+                        onCancel = { onCancel(pos.node) }
                     )
                 }
             }

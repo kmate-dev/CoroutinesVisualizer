@@ -24,7 +24,7 @@ fun CoroutineNodeCard(
 ) {
     Card(modifier = Modifier.widthIn(min = 180.dp)) {
         Column(Modifier.padding(12.dp)) {
-            Text(node.name)
+            Text(node.id)
             Text(
                 text = node.status.name,
                 color = when (node.status) {

@@ -1,7 +1,9 @@
 package com.kmate.dev.coroutinesvisualizer.ui
 
 import com.kmate.dev.coroutinesvisualizer.domain.CoroutineNode
+import com.kmate.dev.coroutinesvisualizer.domain.CoroutineStatus
 import com.kmate.dev.coroutinesvisualizer.ui.models.PositionedNode
+import kotlinx.coroutines.Job
 
 fun layoutTree(
     roots: List<CoroutineNode>,
@@ -36,4 +38,11 @@ fun layoutTree(
             y = it.y * ySpacing
         )
     }
+}
+
+fun Job.toStatus() = when {
+    isActive -> CoroutineStatus.Running
+    isCancelled -> CoroutineStatus.Cancelled
+    isCompleted -> CoroutineStatus.Completed
+    else -> CoroutineStatus.Failed
 }

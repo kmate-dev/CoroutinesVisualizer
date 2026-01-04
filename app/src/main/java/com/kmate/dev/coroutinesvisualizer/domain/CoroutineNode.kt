@@ -1,10 +1,10 @@
 package com.kmate.dev.coroutinesvisualizer.domain
 
-import java.util.UUID
+import kotlinx.coroutines.Job
 
 data class CoroutineNode(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String,
+    val id: String,
     val status: CoroutineStatus = CoroutineStatus.Running,
-    val children: List<CoroutineNode> = emptyList()
+    val job: Job? = null,
+    val children: List<CoroutineNode> = emptyList(),
 )
