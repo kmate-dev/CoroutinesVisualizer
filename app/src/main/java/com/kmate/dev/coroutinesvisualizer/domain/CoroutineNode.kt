@@ -7,4 +7,5 @@ data class CoroutineNode(
     val status: CoroutineStatus = CoroutineStatus.Running,
     val job: Job? = null,
     val children: List<CoroutineNode> = emptyList(),
-)
+    val isSupervised: Boolean,
+    )

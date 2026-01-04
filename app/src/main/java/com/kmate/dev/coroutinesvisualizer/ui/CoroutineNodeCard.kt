@@ -1,5 +1,6 @@
 package com.kmate.dev.coroutinesvisualizer.ui
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -23,7 +25,19 @@ fun CoroutineNodeCard(
     onThrowException: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Card(modifier = Modifier.widthIn(min = 180.dp)) {
+    Card(modifier = Modifier
+        .widthIn(min = 180.dp)
+        .run {
+            if(node.isSupervised) {
+                this.border(
+                    width = 2.dp,
+                    color = Color.Green,
+                    shape = CardDefaults.shape
+                )
+            }
+            else this
+        }
+    ) {
         Column(Modifier.padding(12.dp)) {
             Text(node.id)
             Text(
