@@ -2,114 +2,91 @@ package com.kmate.dev.coroutinesvisualizer
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.kmate.dev.coroutinesvisualizer.domain.CoroutineNode
 import com.kmate.dev.coroutinesvisualizer.domain.CoroutineStatus
+import com.kmate.dev.coroutinesvisualizer.domain.CoroutineNodeEvent
 import com.kmate.dev.coroutinesvisualizer.ui.toStatus
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancelChildren
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class CoroutinesDemoScreenViewModel : ViewModel() {
+    companion object {
+        private const val TAG = "DEMO"
+    }
     private val _rootCoroutines = MutableStateFlow<List<CoroutineNode>>(emptyList())
     val rootCoroutines = _rootCoroutines.asStateFlow()
 
+    private val _warningFlow = MutableSharedFlow<String>()
+    val warningFlow = _warningFlow.asSharedFlow()
+
+    private val mainExceptionHandler = CoroutineExceptionHandler { _, exception ->
+
+        Log.w(TAG, "Main Scope caught exception: $exception")
+        viewModelScope.launch {
+            _warningFlow.emit("MainScope caught exception - app would crash now without " +
+                    "custom CoroutineExceptionHandler"
+            )
+        }
+    }
     private val mainJob = SupervisorJob()
-    private val mainScope = CoroutineScope(mainJob + Dispatchers.Default)
+    private val mainScope = CoroutineScope(mainJob + Dispatchers.Default + mainExceptionHandler)
 
     private val jobMap = mutableMapOf<String, Job>()
 
+    private val nodeEvents = MutableSharedFlow<CoroutineNodeEvent>()
+
     fun addRootCoroutine() {
-        addCoroutineInternal(null)
-    }
+        val newId = "Coroutine ${_rootCoroutines.value.size + 1}"
 
-    fun addChildCoroutine(parentNode: CoroutineNode) {
-        addCoroutineInternal(parentNode)
-    }
-
-    private fun addCoroutineInternal(parentNode: CoroutineNode?) {
-        val newId =
-            if (parentNode == null) "Coroutine ${_rootCoroutines.value.size + 1}"
-            else "${parentNode.id}.${parentNode.children.size + 1}"
-
-        val newNode = CoroutineNode(
-            id = newId,
-        )
-
-
-        if (parentNode == null)
-            _rootCoroutines.value += newNode
-        else {
-            _rootCoroutines.update {
-                _rootCoroutines.value.updateNode(parentNode.id) {
-                    val newChildrenList = it.children.toMutableList().apply {
-                        add(newNode)
-                    }
-                    it.copy(
-                        children = newChildrenList
-                    )
-                }
-            }
-        }
-        launchTree()
-    }
-
-    private fun launchTree() {
-        rootCoroutines.value.forEach { rootNode ->
-            val job = launchNode(rootNode, mainScope)
-            _rootCoroutines.update {
-                _rootCoroutines.value.updateNode(rootNode.id) {
-                    it.copy(
-                        job = job,
-                        status = job.toStatus()
-                    )
-                }
-            }
-        }
-    }
-
-    private fun launchNode(node: CoroutineNode, parentScope: CoroutineScope): Job {
-        val job = parentScope.launch {
-            if (node.children.isEmpty()) {
-                while(true) {
-                    delay(10)
-                }
-            } else {
-                node.children.forEach { childNode ->
-                    val job = launchNode(childNode, this)
-                    _rootCoroutines.update {
-                        _rootCoroutines.value.updateNode(childNode.id) {
-                            it.copy(
-                                job = job,
-                                status = job.toStatus()
-                            )
-                        }
-                    }
-                }
-            }
+        val newJob = mainScope.launch {
+            observeEvents(newId, this)
         }
 
-        job.invokeOnCompletion { error ->
+        newJob.invokeOnCompletion { error ->
             val status = when (error) {
                 null -> CoroutineStatus.Completed
                 is CancellationException -> CoroutineStatus.Cancelled
                 else -> CoroutineStatus.Failed
             }
-
-            updateStatus(node.id, status)
+            updateStatus(newId, status)
         }
-        return job
+
+        val newNode = CoroutineNode(
+            id = newId,
+            job = newJob,
+            status = newJob.toStatus()
+        )
+
+        _rootCoroutines.value += newNode
+
+    }
+
+    fun addChildCoroutine(parentNode: CoroutineNode) {
+        viewModelScope.launch {
+            nodeEvents.emit(CoroutineNodeEvent.AddChildNode(nodeId = parentNode.id))
+        }
     }
 
     fun cancelNode(node: CoroutineNode) {
         node.job?.cancel()
+    }
+
+    fun throwException(node: CoroutineNode) {
+        viewModelScope.launch {
+            nodeEvents.emit(CoroutineNodeEvent.ThrowException(node.id))
+        }
     }
 
     fun clearAll() {
@@ -129,6 +106,59 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
     override fun onCleared() {
         mainJob.cancel()
     }
+
+    private suspend fun observeEvents(observerNodeId: String, observerScope: CoroutineScope) {
+        nodeEvents.collect { event ->
+            if(event.nodeId == observerNodeId) {
+                when (event) {
+                    is CoroutineNodeEvent.ThrowException -> {
+                        throw Exception("User thrown exception")
+                    }
+
+                    is CoroutineNodeEvent.AddChildNode -> {
+                        val parentNode = rootCoroutines.value.findNodeById(observerNodeId) ?: return@collect
+
+                        val newNode = createNewNode(parentNode, observerScope)
+
+                        _rootCoroutines.update {
+                            _rootCoroutines.value.updateNode(parentNode.id) {
+                                val newChildrenList = it.children.toMutableList().apply {
+                                    add(newNode)
+                                }
+                                it.copy(
+                                    children = newChildrenList
+                                )
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+
+    private fun createNewNode(parentNode: CoroutineNode, observerScope: CoroutineScope): CoroutineNode {
+        val newId = "${parentNode.id}.${parentNode.children.size + 1}"
+
+        val newJob = observerScope.launch {
+            observeEvents(newId, this)
+        }
+
+        newJob.invokeOnCompletion { error ->
+            val status = when (error) {
+                null -> CoroutineStatus.Completed
+                is CancellationException -> CoroutineStatus.Cancelled
+                else -> CoroutineStatus.Failed
+            }
+            updateStatus(newId, status)
+        }
+
+        return CoroutineNode(
+            id = newId,
+            job = newJob,
+            status = newJob.toStatus()
+        )
+    }
 }
 
 private fun List<CoroutineNode>.updateNode(
@@ -139,5 +169,14 @@ private fun List<CoroutineNode>.updateNode(
         if (it.id == id) transform(it)
         else it.copy(children = it.children.updateNode(id, transform))
     }
+
+private fun List<CoroutineNode>.findNodeById(
+    id: String,
+): CoroutineNode? {
+    return this.find { it.id == id } ?:
+    this.firstNotNullOfOrNull {
+        it.children.findNodeById(id)
+    }
+}
 
 

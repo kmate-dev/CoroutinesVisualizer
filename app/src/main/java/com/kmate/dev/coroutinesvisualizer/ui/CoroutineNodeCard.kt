@@ -20,6 +20,7 @@ import com.kmate.dev.coroutinesvisualizer.domain.CoroutineStatus
 fun CoroutineNodeCard(
     node: CoroutineNode,
     onAddChild: () -> Unit,
+    onThrowException: () -> Unit,
     onCancel: () -> Unit
 ) {
     Card(modifier = Modifier.widthIn(min = 180.dp)) {
@@ -38,7 +39,9 @@ fun CoroutineNodeCard(
             Row {
                 Button(onClick = onAddChild) { Text("+") }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onCancel) { Text("X") }
+                Button(onClick = onCancel) { Text("C") }
+                Spacer(Modifier.width(8.dp))
+                Button(onClick = onThrowException) { Text("Ex")}
             }
         }
     }

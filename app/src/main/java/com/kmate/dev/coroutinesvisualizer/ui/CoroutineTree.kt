@@ -17,6 +17,7 @@ import com.kmate.dev.coroutinesvisualizer.domain.CoroutineNode
 fun CoroutineTree(
     roots: List<CoroutineNode>,
     onAddChild: (CoroutineNode) -> Unit,
+    onThrowException: (CoroutineNode) -> Unit,
     onCancel: (CoroutineNode) -> Unit,
 ) {
     val positioned = remember(roots) { layoutTree(roots) }
@@ -54,7 +55,8 @@ fun CoroutineTree(
                     CoroutineNodeCard(
                         node = pos.node,
                         onAddChild = { onAddChild(pos.node) },
-                        onCancel = { onCancel(pos.node) }
+                        onThrowException = { onThrowException(pos.node) },
+                        onCancel = { onCancel(pos.node) },
                     )
                 }
             }
