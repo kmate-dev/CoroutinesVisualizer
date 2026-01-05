@@ -23,18 +23,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 
 class CoroutinesDemoScreenViewModel : ViewModel() {
-    companion object {
-        private const val TAG = "DEMO"
-    }
     private val _rootCoroutines = MutableStateFlow<List<CoroutineNode>>(emptyList())
     val rootCoroutines = _rootCoroutines.asStateFlow()
 
     private val _warningFlow = MutableSharedFlow<String>()
     val warningFlow = _warningFlow.asSharedFlow()
 
-    private val mainExceptionHandler = CoroutineExceptionHandler { _, exception ->
-
-        Log.w(TAG, "Main Scope caught exception: $exception")
+    private val mainExceptionHandler = CoroutineExceptionHandler { _, _ ->
         viewModelScope.launch {
             _warningFlow.emit("MainScope caught exception - app would crash now without " +
                     "custom CoroutineExceptionHandler"
@@ -43,8 +38,6 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
     }
     private val mainJob = SupervisorJob()
     private val mainScope = CoroutineScope(mainJob + Dispatchers.Default + mainExceptionHandler)
-
-    private val jobMap = mutableMapOf<String, Job>()
 
     private val nodeEvents = MutableSharedFlow<CoroutineNodeEvent>()
 
@@ -86,7 +79,10 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
     fun clearAll() {
         mainJob.cancelChildren()
         _rootCoroutines.update { emptyList() }
-        jobMap.clear()
+    }
+
+    override fun onCleared() {
+        mainJob.cancel()
     }
 
     private fun updateStatus(id: String, status: CoroutineStatus) {
@@ -95,10 +91,6 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
                 it.copy(status = status)
             }
         }
-    }
-
-    override fun onCleared() {
-        mainJob.cancel()
     }
 
     private suspend fun observeEvents(observerNodeId: String, scope: CoroutineScope) {

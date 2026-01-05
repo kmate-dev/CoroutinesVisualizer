@@ -109,7 +109,7 @@ fun CoroutinesDemoScreen(
             dismissButton = null,
             title = { Text("Configure new Coroutine node") },
             text = {
-                Column() {
+                Column {
                     CheckboxOption(
                         label = "Add supervisorScope over children",
                         state = isSupervising,

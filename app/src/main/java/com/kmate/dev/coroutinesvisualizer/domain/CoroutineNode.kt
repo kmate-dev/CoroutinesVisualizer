@@ -10,4 +10,4 @@ data class CoroutineNode(
     val isSupervising: Boolean,
     val hasCoroutineExceptionHandler: Boolean,
     val caughtException: Boolean = false,
-    )
+)
