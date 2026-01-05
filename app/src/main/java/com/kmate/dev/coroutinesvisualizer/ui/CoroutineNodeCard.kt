@@ -31,6 +31,7 @@ fun CoroutineNodeCard(
     onThrowException: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val buttonsEnabled = node.status == CoroutineStatus.Running
     Card(modifier = Modifier
         .width(300.dp)
     ) {
@@ -59,12 +60,12 @@ fun CoroutineNodeCard(
             )
 
             Row {
-                Button(onClick = onCancel) { Text("Cancel") }
+                Button(onClick = onCancel, enabled = buttonsEnabled) { Text("Cancel") }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onThrowException) { Text("Throw Exception") }
+                Button(onClick = onThrowException, enabled = buttonsEnabled) { Text("Throw Exception") }
             }
             Spacer(Modifier.height(8.dp))
-            Button(onClick = onAddChild) { Text("Add child coroutine") }
+            Button(onClick = onAddChild, enabled = buttonsEnabled) { Text("Add child coroutine") }
 
             if(node.isSupervising) {
                 HorizontalLabel(
