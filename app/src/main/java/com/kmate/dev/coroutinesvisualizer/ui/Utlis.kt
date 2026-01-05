@@ -7,8 +7,8 @@ import kotlinx.coroutines.Job
 
 fun layoutTree(
     roots: List<CoroutineNode>,
-    xSpacing: Float = 220f,
-    ySpacing: Float = 160f
+    xSpacing: Float = 400f,
+    ySpacing: Float = 250f
 ): List<PositionedNode> {
 
     val positioned = mutableListOf<PositionedNode>()

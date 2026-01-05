@@ -29,9 +29,9 @@ fun CoroutineTree(
             positioned.forEach { node ->
                 node.node.children.forEach { child ->
                     val childPos = positioned.first { it.node.id == child.id }
-                    val pxXValue = density.run { (node.x.dp + 90f.dp).toPx() }
-                    val pxYValue = density.run { (node.y.dp + 60f.dp).toPx() }
-                    val pxXValueChild = density.run { (childPos.x.dp + 90f.dp).toPx() }
+                    val pxXValue = density.run { (node.x.dp + 150f.dp).toPx() }
+                    val pxYValue = density.run { (node.y.dp + 100f.dp).toPx() }
+                    val pxXValueChild = density.run { (childPos.x.dp + 150f.dp).toPx() }
                     val pxYValueChild = density.run { (childPos.y.dp).toPx() }
 
                     drawLine(

@@ -1,17 +1,21 @@
 package com.kmate.dev.coroutinesvisualizer.ui
 
-import androidx.compose.foundation.border
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -26,22 +30,22 @@ fun CoroutineNodeCard(
     onCancel: () -> Unit
 ) {
     Card(modifier = Modifier
-        .widthIn(min = 180.dp)
-        .run {
-            if(node.isSupervising) {
-                this.border(
-                    width = 2.dp,
-                    color = Color.Green,
-                    shape = CardDefaults.shape
+        .width(300.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (node.hasCoroutineExceptionHandler) {
+                HorizontalLabel(
+                    label = "CoroutineExceptionHandler { ... }",
+                    color = Color.Yellow,
                 )
             }
-            else this
-        }
-    ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(node.id)
+            Text(node.id, style = MaterialTheme.typography.headlineMedium)
             Text(
                 text = node.status.name,
+                style = MaterialTheme.typography.headlineSmall,
                 color = when (node.status) {
                     CoroutineStatus.Running -> Color.Green
                     CoroutineStatus.Completed -> Color.Blue
@@ -51,12 +55,38 @@ fun CoroutineNodeCard(
             )
 
             Row {
-                Button(onClick = onAddChild) { Text("+") }
+                Button(onClick = onCancel) { Text("Cancel") }
                 Spacer(Modifier.width(8.dp))
-                Button(onClick = onCancel) { Text("C") }
-                Spacer(Modifier.width(8.dp))
-                Button(onClick = onThrowException) { Text("Ex")}
+                Button(onClick = onThrowException) { Text("Throw Exception") }
+            }
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = onAddChild) { Text("Add child coroutine") }
+
+            if(node.isSupervising) {
+                HorizontalLabel(
+                    label = "supervisorScope { ... }",
+                    color = Color.Green
+                )
             }
         }
+    }
+}
+
+@Composable
+fun HorizontalLabel(
+    label: String,
+    color: Color,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .background(
+                color = color,
+                shape = CardDefaults.shape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label)
     }
 }
