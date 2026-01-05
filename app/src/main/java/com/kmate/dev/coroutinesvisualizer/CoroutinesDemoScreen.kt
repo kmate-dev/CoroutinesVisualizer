@@ -5,11 +5,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -87,27 +89,58 @@ fun CoroutinesDemoScreen(
     }
 
     if (dialogVisible) {
+        var isSupervising by remember { mutableStateOf(false) }
+        var hasCoroutineExceptionHandler by remember { mutableStateOf(false) }
+
         AlertDialog(
             onDismissRequest = { dialogVisible = false },
             confirmButton = {
                 TextButton(onClick = {
-                    viewModel.addCoroutine(parentNode = dialogForNode, isSupervised = false)
+                    viewModel.addCoroutine(
+                        parentNode = dialogForNode,
+                        isSupervising = isSupervising,
+                        hasCoroutineExceptionHandler = hasCoroutineExceptionHandler
+                    )
                     dialogVisible = false
                 }) {
-                    Text("Job")
+                    Text("Add Coroutine")
                 }
             },
-            dismissButton = {
-                TextButton(onClick = {
-                    viewModel.addCoroutine(parentNode = dialogForNode, isSupervised = true)
-                    dialogVisible = false
-                }) {
-
-                    Text("SupervisedJob")
+            dismissButton = null,
+            title = { Text("Configure new Coroutine node") },
+            text = {
+                Column() {
+                    CheckboxOption(
+                        label = "Add supervisorScope over children",
+                        state = isSupervising,
+                        onCheckedChange = { isSupervising = it }
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    CheckboxOption(
+                        label = "Add CoroutineExceptionHandler to Coroutine context",
+                        state = hasCoroutineExceptionHandler,
+                        onCheckedChange = { hasCoroutineExceptionHandler = it }
+                    )
                 }
-            },
-            title = { Text("Choose coroutine job type") },
+            }
         )
+    }
+}
+
+@Composable
+fun CheckboxOption(
+    label: String,
+    state: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(
+            checked = state,
+            onCheckedChange = onCheckedChange,
+        )
+        Text(label)
     }
 }
 

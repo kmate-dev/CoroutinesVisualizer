@@ -28,7 +28,7 @@ fun CoroutineNodeCard(
     Card(modifier = Modifier
         .widthIn(min = 180.dp)
         .run {
-            if(node.isSupervised) {
+            if(node.isSupervising) {
                 this.border(
                     width = 2.dp,
                     color = Color.Green,
@@ -45,8 +45,8 @@ fun CoroutineNodeCard(
                 color = when (node.status) {
                     CoroutineStatus.Running -> Color.Green
                     CoroutineStatus.Completed -> Color.Blue
-                    CoroutineStatus.Cancelled -> Color.Red
-                    CoroutineStatus.Failed -> Color.Magenta
+                    CoroutineStatus.Cancelled -> Color.Magenta
+                    CoroutineStatus.Failed -> Color.Red
                 }
             )
 

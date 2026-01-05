@@ -4,7 +4,8 @@ sealed interface CoroutineNodeEvent {
     val nodeId: String
     data class AddChildNode(
         override val nodeId: String,
-        val isSupervised: Boolean,
+        val isSupervising: Boolean,
+        val hasCoroutineExceptionHandler: Boolean,
     ): CoroutineNodeEvent
     data class ThrowException(override val nodeId: String): CoroutineNodeEvent
 }

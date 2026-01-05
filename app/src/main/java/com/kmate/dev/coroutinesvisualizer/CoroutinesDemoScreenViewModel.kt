@@ -48,15 +48,25 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
 
     private val nodeEvents = MutableSharedFlow<CoroutineNodeEvent>()
 
-    fun addCoroutine(parentNode: CoroutineNode?, isSupervised: Boolean) {
+    fun addCoroutine(
+        parentNode: CoroutineNode?,
+        isSupervising: Boolean,
+        hasCoroutineExceptionHandler: Boolean
+    ) {
         viewModelScope.launch {
             if (parentNode == null) {
-                _rootCoroutines.value += createNewNode(null, mainScope, isSupervised)
+                _rootCoroutines.value += createNewNode(
+                    null,
+                    mainScope,
+                    isSupervising,
+                    hasCoroutineExceptionHandler
+                )
             } else {
                 nodeEvents.emit(
                     CoroutineNodeEvent.AddChildNode(
                         nodeId = parentNode.id,
-                        isSupervised
+                        isSupervising,
+                        hasCoroutineExceptionHandler
                     )
                 )
             }
@@ -102,7 +112,12 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
                     is CoroutineNodeEvent.AddChildNode -> {
                         val parentNode = rootCoroutines.value.findNodeById(observerNodeId) ?: return@collect
 
-                        val newNode = createNewNode(parentNode, scope, event.isSupervised)
+                        val newNode = createNewNode(
+                            parentNode,
+                            scope,
+                            event.isSupervising,
+                            event.hasCoroutineExceptionHandler,
+                        )
 
                         _rootCoroutines.update {
                             _rootCoroutines.value.updateNode(parentNode.id) {
@@ -121,21 +136,33 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
         }
     }
 
-    private fun createNewNode(parentNode: CoroutineNode?, parentScope: CoroutineScope, isSupervised: Boolean): CoroutineNode {
+    private fun createNewNode(
+        parentNode: CoroutineNode?,
+        parentScope: CoroutineScope,
+        isSupervising: Boolean,
+        hasCoroutineExceptionHandler: Boolean,
+    ): CoroutineNode {
         val newId =
             if (parentNode == null) "Coroutine ${_rootCoroutines.value.size + 1}"
             else "${parentNode.id}.${parentNode.children.size + 1}"
 
-        val newJob =
-            parentScope.launch {
-                if (isSupervised) {
-                    supervisorScope {
-                        observeEvents(newId, this)
-                    }
-                } else {
-                    observeEvents(newId, this)
-                }
+        val jobProcessing: suspend CoroutineScope.() -> Unit = {
+            withOptionalSupervisor(isSupervising) {
+                observeEvents(newId, this)
             }
+        }
+
+        val newJob = if (hasCoroutineExceptionHandler) {
+            parentScope.launch(CoroutineExceptionHandler { _, _ ->
+                viewModelScope.launch {
+                    _warningFlow.emit("Node $newId, caught exception")
+                }
+            }) {
+                jobProcessing()
+            }
+        } else parentScope.launch {
+            jobProcessing()
+        }
 
         newJob.invokeOnCompletion { error ->
             val status = when (error) {
@@ -150,9 +177,18 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
             id = newId,
             job = newJob,
             status = newJob.toStatus(),
-            isSupervised = isSupervised,
+            isSupervising = isSupervising,
+            hasCoroutineExceptionHandler = hasCoroutineExceptionHandler,
         )
     }
+}
+
+suspend fun CoroutineScope.withOptionalSupervisor(
+    enabled: Boolean,
+    block: suspend CoroutineScope.() -> Unit
+) {
+    if (enabled) supervisorScope(block)
+    else block()
 }
 
 private fun List<CoroutineNode>.updateNode(
