@@ -155,6 +155,13 @@ class CoroutinesDemoScreenViewModel : ViewModel() {
         val newJob = if (hasCoroutineExceptionHandler) {
             parentScope.launch(CoroutineExceptionHandler { _, _ ->
                 viewModelScope.launch {
+                    _rootCoroutines.update {
+                        _rootCoroutines.value.updateNode(newId) {
+                            it.copy(
+                                caughtException = true
+                            )
+                        }
+                    }
                     _warningFlow.emit("Node $newId, caught exception")
                 }
             }) {

@@ -9,4 +9,5 @@ data class CoroutineNode(
     val children: List<CoroutineNode> = emptyList(),
     val isSupervising: Boolean,
     val hasCoroutineExceptionHandler: Boolean,
+    val caughtException: Boolean = false,
     )
